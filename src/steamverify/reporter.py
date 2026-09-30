@@ -376,11 +376,20 @@ def render_text(
             emit(f"  {c('!', 'red')} {message}")
 
     # -- next steps ------------------------------------------------------
-    emit()
-    emit(c(tr("report.section.next"), "bold"))
     if result.is_clean:
+        emit()
+        emit(c(tr("report.section.next"), "bold"))
         emit("  " + tr("report.next.clean"))
+    elif result.stubs and not (result.modified or result.missing or result.extra):
+        # Nothing to fix: the only difference is content-free placeholders.
+        # Saying so explicitly avoids an empty "what to do" heading, and
+        # explains why the exit code is non-zero.
+        emit()
+        emit(c(tr("report.section.next"), "bold"))
+        emit("  " + tr("report.next.stub_only"))
     else:
+        emit()
+        emit(c(tr("report.section.next"), "bold"))
         step = 1
         if result.modified or result.missing:
             emit(f"  {step}. " + tr("report.next.steam_verify"))

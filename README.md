@@ -23,28 +23,50 @@ It runs **fully offline**: the manifests ship in this repository, so a scan is
 reproducible and needs no network access, no Steam login and no API keys.
 
 ```
-$ steamverify verify --game witcher3
-
-steamverify  v0.1.0
+steamverify  v0.1.1
 ------------------------------------------------------------------------
   game        The Witcher 3: Wild Hunt
   app id      292030
   build       25575366
   manifest    1,937 files, 73,477 chunks, 69.19 GiB
-  scanned     2026-09-30T15:37:57Z  (69.0s)
+  manifest id sha256:cb2ddd355f0d42c5
+  directory   <GAME_DIR>   [S:\SteamLibrary, build 25575366]
+  scanned     <UTC>  (<elapsed>)
 ------------------------------------------------------------------------
 
 Summary
   # verified    1,915   files match the official manifest
   . modified        0   tracked files whose content differs
   # stub           22   content-free placeholder entries (DLC markers)
-  # extra       4,968   files not present in any official manifest
+  # extra       4,960   files not present in any official manifest
   . missing         0   official files that are absent
+  - ignored       297   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
-  4,968 extra files / 761.11 MiB not in the official build
+  4,960 extra files / 755.12 MiB not in the official build
 
   RESULT: game data intact; only content-free DLC marker files differ.
+
+Extra files by location
+    4,952 files    746.38 MiB   tools
+        7 files      8.74 MiB   _steam_audit
+        1 files           8 B   content
+
+Placeholder entries (not a corruption signal)
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  ... 17 more
+  These official entries carry an identifier hash but are legitimately empty on disk.
+
+What to do
+  1. Extra files are not part of the official build. Mods, trainers,
+     save games, crash dumps and repack leftovers show up here.
+     Delete what you do not want; the game itself is unaffected.
+
+  Exit code: 2
 ```
 
 ---
@@ -144,19 +166,120 @@ What is **never** translated, so scripts and CI stay unaffected by `--lang`:
 A missing translation falls back to English rather than leaking a raw key, and
 CI asserts the two catalogs have identical key sets and placeholders.
 
-### Exit codes
+## Example output
 
-Useful for scripts and CI:
+Every sample below is **real tool output** from a 69 GiB install, scrubbed only
+by replacing the absolute directory with `<GAME_DIR>`, the timestamp with
+`<UTC>` and the duration with `<elapsed>`. Full files:
+[`docs/examples/`](docs/examples/).
 
-| Code | Meaning |
-|-----:|---------|
-| `0` | Clean — the install matches the manifest exactly |
-| `1` | Official files intact, but extra files are present |
-| `2` | Official files are modified, missing, or present only as stubs |
-| `3` | Errors (unreadable files, bad manifest, no install found) |
+### A normal run: official data intact, third-party files present
 
-`--fail-on modified` and `--fail-on missing` relax this when you only care
-about a subset.
+```
+  game        The Witcher 3: Wild Hunt
+  app id      292030
+  build       25575366
+  manifest    1,937 files, 73,477 chunks, 69.19 GiB
+  manifest id sha256:cb2ddd355f0d42c5
+  directory   <GAME_DIR>   [S:\SteamLibrary, build 25575366]
+  scanned     <UTC>  (<elapsed>)
+------------------------------------------------------------------------
+
+Summary
+  # verified    1,915   files match the official manifest
+  . modified        0   tracked files whose content differs
+  # stub           22   content-free placeholder entries (DLC markers)
+  # extra       4,960   files not present in any official manifest
+  . missing         0   official files that are absent
+  - ignored       297   skipped by ignore rules
+
+  1,915 files / 69.19 GiB verified against the official build
+  4,960 extra files / 755.12 MiB not in the official build
+
+  RESULT: game data intact; only content-free DLC marker files differ.
+
+Extra files by location
+    4,952 files    746.38 MiB   tools
+        7 files      8.74 MiB   _steam_audit
+        1 files           8 B   content
+
+Placeholder entries (not a corruption signal)
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  ... 17 more
+  These official entries carry an identifier hash but are legitimately empty on disk.
+
+What to do
+  1. Extra files are not part of the official build. Mods, trainers,
+     save games, crash dumps and repack leftovers show up here.
+     Delete what you do not want; the game itself is unaffected.
+
+  Exit code: 2
+```
+
+Full output: [`examples/report-full.txt`](docs/examples/report-full.txt) ·
+[中文](docs/examples/report-full.zh-CN.txt)
+
+### A clean run, once you ignore what you added on purpose
+
+```bash
+steamverify verify --game witcher3 \
+    --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+    --ignore '*.stamp' --ignore 'metadata.store'
+```
+
+```
+Summary
+  # verified    1,915   files match the official manifest
+  . modified        0   tracked files whose content differs
+  # stub           22   content-free placeholder entries (DLC markers)
+  . extra           0   files not present in any official manifest
+  . missing         0   official files that are absent
+  - ignored     5,257   skipped by ignore rules
+
+  1,915 files / 69.19 GiB verified against the official build
+
+  RESULT: game data intact; only content-free DLC marker files differ.
+
+Placeholder entries (not a corruption signal)
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  ... 17 more
+  These official entries carry an identifier hash but are legitimately empty on disk.
+
+What to do
+  Nothing to fix -- these placeholders are meant to be empty. The exit code is still non-zero because the tree is not a byte-exact match; use --fail-on missing to ignore them in CI.
+
+  Exit code: 2
+```
+
+Full output: [`examples/report-clean.txt`](docs/examples/report-clean.txt) ·
+[中文](docs/examples/report-clean.zh-CN.txt)
+
+### Why the clean run still exits 2
+
+Everything in that second sample is *correct*, yet the exit code is 2, not 0.
+That is deliberate:
+
+* `stub` means the official manifest lists an entry, but the local file is
+  zero bytes. That is **not** a corruption signal -- but it does mean the tree
+  is not byte-for-byte identical to the official build, so it is not reported
+  as clean;
+* use `--fail-on missing` (or `--fail-on modified`) when you do not want those
+  to fail a CI job;
+* to ask only "was any official game data altered?", read `game_data_intact`
+  from the JSON report -- placeholders do not affect it.
+
+The samples are regenerated from a real install with
+[`tools/generate_examples.py`](tools/generate_examples.py), and CI runs
+[`tools/check_docs.py`](tools/check_docs.py) to prove every block quoted here
+still matches them verbatim.
 
 ## How it works
 

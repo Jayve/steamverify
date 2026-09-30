@@ -97,16 +97,119 @@ steamverify --lang zh verify --game witcher3
 
 缺翻译时回退英文，而不是暴露原始 key；CI 会断言两个语言的 key 集合与 `{}` 占位符完全一致。
 
-### 退出码
+## 输出样例
 
-| 退出码 | 含义 |
-|---:|---|
-| `0` | 干净，与清单完全一致 |
-| `1` | 官方文件完好，但存在多出的文件 |
-| `2` | 官方文件被改、缺失，或只剩空壳（stub） |
-| `3` | 出错（文件不可读、清单损坏、找不到安装） |
+以下均为**真实运行结果**（69 GiB 的实际安装），仅做了脱敏：目录替换为 `<GAME_DIR>`，
+时间替换为 `<UTC>`，耗时替换为 `<elapsed>`。完整文件见
+[`examples/`](examples/)。
 
-`--fail-on modified` / `--fail-on missing` 可以放宽判定条件。
+### 场景一：发现大量非官方文件
+
+一台装了整合版工具包的机器 —— 官方数据完好，但多出 4,960 个文件：
+
+```
+  游戏     The Witcher 3: Wild Hunt
+  app id   292030
+  构建     25575366
+  清单     1,937 个文件，73,477 个分块，69.19 GiB
+  清单标识 sha256:cb2ddd355f0d42c5
+  目录     <GAME_DIR>   [S:\SteamLibrary, build 25575366]
+  扫描时间 <UTC>  (<elapsed>)
+------------------------------------------------------------------------
+
+汇总
+  # 一致      1,915   与官方清单一致的文件
+  . 已修改        0   清单内但内容不同的文件
+  # 占位         22   无内容的占位条目（DLC 授权标记）
+  # 多余      4,960   不在任何官方清单中的文件
+  . 缺失          0   缺失的官方文件
+  - 已忽略      297   被忽略规则跳过
+
+  已按官方版本校验 1,915 个文件 / 69.19 GiB
+  多余文件 4,960 个 / 755.12 MiB，不属于官方版本
+
+  结论：游戏数据完好；仅有无内容的 DLC 标记文件存在差异。
+
+多余文件分布
+    4,952 个文件    746.38 MiB   tools
+        7 个文件      8.74 MiB   _steam_audit
+        1 个文件           8 B   content
+
+占位条目（不是损坏信号）
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  …… 另有 17 项
+  这些官方条目只带标识哈希，本地本就应为空文件。
+
+处理建议
+  1. 多余文件不属于官方版本。MOD、修改器、
+     存档、崩溃转储和整合版残留都会出现在这里。
+     不需要的可以直接删除，不影响游戏本体。
+
+  退出码：2
+```
+
+完整输出：[`examples/report-full.zh-CN.txt`](examples/report-full.zh-CN.txt)
+
+### 场景二：排除已知的第三方目录后
+
+用 `--ignore` 把这些目录排除掉，结果就只剩 22 个 DLC 授权标记：
+
+```bash
+steamverify --lang zh verify --game witcher3 \
+    --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+    --ignore '*.stamp' --ignore 'metadata.store'
+```
+
+```
+汇总
+  # 一致      1,915   与官方清单一致的文件
+  . 已修改        0   清单内但内容不同的文件
+  # 占位         22   无内容的占位条目（DLC 授权标记）
+  . 多余          0   不在任何官方清单中的文件
+  . 缺失          0   缺失的官方文件
+  - 已忽略    5,257   被忽略规则跳过
+
+  已按官方版本校验 1,915 个文件 / 69.19 GiB
+
+  结论：游戏数据完好；仅有无内容的 DLC 标记文件存在差异。
+
+占位条目（不是损坏信号）
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  …… 另有 17 项
+  这些官方条目只带标识哈希，本地本就应为空文件。
+
+处理建议
+  无需修复 —— 这些占位条目本就应为空。退出码仍非 0，因为目录并非逐字节完全一致；在 CI 中可用 --fail-on missing 忽略它们。
+
+  退出码：2
+```
+
+完整输出：[`examples/report-clean.zh-CN.txt`](examples/report-clean.zh-CN.txt)
+
+英文样例见 [`examples/report-full.txt`](examples/report-full.txt) 与
+[`examples/report-clean.txt`](examples/report-clean.txt)。
+
+### 关于退出码
+
+场景二里所有内容其实都是"对的"，退出码却是 2 而不是 0。这是刻意的：
+
+* `stub` 表示官方清单里的条目在本地是 0 字节文件。它**不是**损坏信号，
+  但也确实意味着目录并非逐字节等同于官方版本，所以不报 0；
+* 想让这类差异不触发失败，用 `--fail-on missing`（或 `--fail-on modified`）；
+* 只想确认"官方游戏数据有没有被动过"时，看 JSON 里的 `game_data_intact` 字段即可 ——
+  它不受 stub 影响。
+
+样例由 [`tools/generate_examples.py`](../tools/generate_examples.py) 从真实安装生成，
+CI 会运行 [`tools/check_docs.py`](../tools/check_docs.py)
+验证本文引用的每一段输出仍然逐行一致。
 
 ## 工作原理
 

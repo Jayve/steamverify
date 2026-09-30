@@ -119,3 +119,5 @@ jobs:
               print("PROBLEM:", problem)
           sys.exit(1 if problems else 0)
           PY
+      - name: README samples must match docs/examples
+        run: python tools/check_docs.py

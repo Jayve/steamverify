@@ -233,6 +233,11 @@ CATALOG: dict[str, dict[str, str]] = {
         "report.next.clean": (
             "Nothing. If Steam still reports problems, verify with Steam itself."
         ),
+        "report.next.stub_only": (
+            "Nothing to fix -- these placeholders are meant to be empty. The "
+            "exit code is still non-zero because the tree is not a byte-exact "
+            "match; use --fail-on missing to ignore them in CI."
+        ),
         "report.next.steam_verify": (
             "In Steam: right-click the game > Properties > Installed Files"
         ),
@@ -430,6 +435,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "report.exit_code": "退出码：{code}",
         # ---- report: next steps ----
         "report.next.clean": "无需处理。若 Steam 仍报错，请用 Steam 自带的校验功能。",
+        "report.next.stub_only": (
+            "无需修复 —— 这些占位条目本就应为空。退出码仍非 0，因为目录并非"
+            "逐字节完全一致；在 CI 中可用 --fail-on missing 忽略它们。"
+        ),
         "report.next.steam_verify": "在 Steam 中：右键游戏 > 属性 > 已安装文件",
         "report.next.steam_verify2": "> “验证游戏文件的完整性”，然后重新运行本扫描。",
         "report.next.still_differ": "仍然不一致的文件，通常是覆盖了游戏数据的 MOD。",

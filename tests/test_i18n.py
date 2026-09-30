@@ -248,6 +248,46 @@ def test_chinese_report_for_clean_tree(tmp_path):
     assert "无需处理" in text
 
 
+def test_stub_only_report_has_no_empty_next_steps(tmp_path):
+    """A placeholder-only result still needs to say something under 'what to do'."""
+    from steamverify import scanner
+
+    root = tmp_path / "tree"
+    root.mkdir()
+    (root / "m.tombstone").write_bytes(b"")
+    manifest = manifest_mod.Manifest(
+        header=dict(HEADER),
+        files=[FileEntry(path="m.tombstone", size=0, sha1=sha1(b"id"))],
+    )
+    result = scanner.scan(root, manifest)
+    assert result.stubs and not result.modified and not result.extra
+
+    for language, heading in (("en", "What to do"), ("zh", "处理建议")):
+        text = reporter.render_text(result, colour="never", language=language)
+        section = text.split(heading, 1)[1].split("Exit code:", 1)[0]
+        section = section.split("退出码：", 1)[0]
+        # something actionable, not an empty heading
+        assert section.strip(), f"empty {heading!r} section in {language}"
+
+
+def test_stub_only_explains_the_exit_code(tmp_path):
+    from steamverify import scanner
+
+    root = tmp_path / "tree"
+    root.mkdir()
+    (root / "m.tombstone").write_bytes(b"")
+    manifest = manifest_mod.Manifest(
+        header=dict(HEADER),
+        files=[FileEntry(path="m.tombstone", size=0, sha1=sha1(b"id"))],
+    )
+    result = scanner.scan(root, manifest)
+    english = reporter.render_text(result, colour="never", language="en")
+    assert "--fail-on missing" in english
+
+    chinese = reporter.render_text(result, colour="never", language="zh")
+    assert "--fail-on missing" in chinese
+
+
 def test_report_respects_process_language(tmp_path):
     try:
         i18n.set_language("zh")

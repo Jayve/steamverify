@@ -1,0 +1,51 @@
+# steamverify verify --game witcher3 --max-list 5
+#
+# Generated from a real 69 GiB install, then scrubbed: the directory is
+# replaced with <GAME_DIR>, timestamps with <UTC>, durations with <elapsed>.
+# Everything else is verbatim tool output; ANSI colour is absent because the
+# output was captured from a pipe rather than a terminal.
+
+steamverify  v0.1.1
+------------------------------------------------------------------------
+  game        The Witcher 3: Wild Hunt
+  app id      292030
+  build       25575366
+  manifest    1,937 files, 73,477 chunks, 69.19 GiB
+  manifest id sha256:cb2ddd355f0d42c5
+  directory   <GAME_DIR>   [S:\SteamLibrary, build 25575366]
+  scanned     <UTC>  (<elapsed>)
+------------------------------------------------------------------------
+
+Summary
+  # verified    1,915   files match the official manifest
+  . modified        0   tracked files whose content differs
+  # stub           22   content-free placeholder entries (DLC markers)
+  # extra       4,960   files not present in any official manifest
+  . missing         0   official files that are absent
+  - ignored       297   skipped by ignore rules
+
+  1,915 files / 69.19 GiB verified against the official build
+  4,960 extra files / 755.12 MiB not in the official build
+
+  RESULT: game data intact; only content-free DLC marker files differ.
+
+Extra files by location
+    4,952 files    746.38 MiB   tools
+        7 files      8.74 MiB   _steam_audit
+        1 files           8 B   content
+
+Placeholder entries (not a corruption signal)
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  ... 17 more
+  These official entries carry an identifier hash but are legitimately empty on disk.
+
+What to do
+  1. Extra files are not part of the official build. Mods, trainers,
+     save games, crash dumps and repack leftovers show up here.
+     Delete what you do not want; the game itself is unaffected.
+
+  Exit code: 2

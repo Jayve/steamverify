@@ -1,0 +1,49 @@
+# steamverify --lang zh verify --game witcher3 --max-list 5
+#
+# 取自真实的 69 GiB 安装，仅做脱敏：目录替换为 <GAME_DIR>，时间替换为 <UTC>，
+# 耗时替换为 <elapsed>。其余内容均为工具原样输出（因写入管道而非终端，故无颜色）。
+
+steamverify  v0.1.1
+------------------------------------------------------------------------
+  游戏     The Witcher 3: Wild Hunt
+  app id   292030
+  构建     25575366
+  清单     1,937 个文件，73,477 个分块，69.19 GiB
+  清单标识 sha256:cb2ddd355f0d42c5
+  目录     <GAME_DIR>   [S:\SteamLibrary, build 25575366]
+  扫描时间 <UTC>  (<elapsed>)
+------------------------------------------------------------------------
+
+汇总
+  # 一致      1,915   与官方清单一致的文件
+  . 已修改        0   清单内但内容不同的文件
+  # 占位         22   无内容的占位条目（DLC 授权标记）
+  # 多余      4,960   不在任何官方清单中的文件
+  . 缺失          0   缺失的官方文件
+  - 已忽略      297   被忽略规则跳过
+
+  已按官方版本校验 1,915 个文件 / 69.19 GiB
+  多余文件 4,960 个 / 755.12 MiB，不属于官方版本
+
+  结论：游戏数据完好；仅有无内容的 DLC 标记文件存在差异。
+
+多余文件分布
+    4,952 个文件    746.38 MiB   tools
+        7 个文件      8.74 MiB   _steam_audit
+        1 个文件           8 B   content
+
+占位条目（不是损坏信号）
+  S dlc-tombstones/bob/bob.tombstone
+  S dlc-tombstones/bob/bob_speech_cn.tombstone
+  S dlc-tombstones/bob/bob_speech_en.tombstone
+  S dlc-tombstones/dlc1/dlc1.tombstone
+  S dlc-tombstones/dlc10/dlc10.tombstone
+  …… 另有 17 项
+  这些官方条目只带标识哈希，本地本就应为空文件。
+
+处理建议
+  1. 多余文件不属于官方版本。MOD、修改器、
+     存档、崩溃转储和整合版残留都会出现在这里。
+     不需要的可以直接删除，不影响游戏本体。
+
+  退出码：2

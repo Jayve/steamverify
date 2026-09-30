@@ -2,6 +2,10 @@
 # be identical everywhere. Never let Git rewrite them.
 manifests/**/*.svm  binary -text
 
+# Sample reports are quoted verbatim in the READMEs and compared line by line
+# by tools/check_docs.py, so their line endings must not change on checkout.
+docs/examples/*.txt  text eol=lf
+
 # Normalise text files so checkouts are byte-identical across platforms.
 * text=auto eol=lf
 *.png binary
