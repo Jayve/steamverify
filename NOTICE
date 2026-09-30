@@ -1,0 +1,63 @@
+# Notices
+
+## What this repository contains
+
+`steamverify` ships **hashes and metadata only**. No game code, no game
+assets, and no copyrighted content of any kind is included or redistributed.
+
+The bundled files under `manifests/` contain, for each supported game:
+
+* relative file paths,
+* byte sizes,
+* SHA-1 digests of file contents and of SteamPipe chunks.
+
+This is the same class of information Steam stores in its own client caches
+and distributes to every Steam client that installs a game, and that Steam
+exposes through its public depot manifest endpoints. It cannot be used to
+reconstruct any file.
+
+## Trademarks
+
+Game titles, publisher names and platform names referenced in this project are
+the property of their respective owners. They appear here only to identify
+which build a manifest describes, in the same way a package manager names the
+software it installs.
+
+In particular:
+
+* **The Witcher** and **CD Projekt Red** are trademarks of CD Projekt S.A.
+* **Steam** and **Valve** are trademarks of Valve Corporation.
+* Any other game named in `manifests/registry.json` is the property of its
+  publisher.
+
+This project is not affiliated with, endorsed by, or sponsored by any of them.
+
+## Third-party attribution
+
+Runtime code uses the Python standard library only, so there are no bundled
+third-party components.
+
+The development environment and test suite use tools that are **not**
+redistributed here:
+
+* [pytest](https://pytest.org) — MIT licence — test runner
+* [ruff](https://docs.astral.sh/ruff/) — MIT licence — linter
+
+The Steam depot manifest parser in `src/steamverify/depot.py` was written from
+observation of the wire format. Its understanding of the format was
+cross-checked against the open-source
+[SteamKit](https://github.com/SteamRE/SteamKit) and
+[steam-manifest-tools](https://github.com/Sainan/steam-manifest-tools)
+projects; no code from either was copied.
+
+## Data accuracy
+
+Manifests are generated from the local Steam client caches on a machine with a
+pristine install, and cross-validated against the byte totals Steam records in
+`appmanifest_<appid>.acf`. Each manifest's SHA-256 is recorded in
+`manifests/registry.json` and verified on every load.
+
+Even so: a manifest describes **one specific build**. If a game has been
+updated, patch your manifest rather than assuming tampering. Verify the
+manifest digest against a second, independent source before drawing security
+conclusions from a scan.

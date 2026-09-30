@@ -1,0 +1,33 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / lint artefacts
+.pytest_cache/
+.coverage
+coverage.xml
+.ruff_cache/
+htmlcov/
+
+# Local scan output
+.steamverify/
+*.svm.tmp
+report.json
+report.csv
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store

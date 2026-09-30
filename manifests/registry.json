@@ -1,0 +1,38 @@
+{
+  "games": {
+    "witcher3": {
+      "aliases": [
+        "292030",
+        "w3"
+      ],
+      "app_id": "292030",
+      "current_build": "25575366",
+      "default_dirs": {
+        "windows": "The Witcher 3"
+      },
+      "directory": "witcher3",
+      "manifests": [
+        {
+          "app_id": "292030",
+          "build_id": "25575366",
+          "chunk_count": 73477,
+          "file": "witcher3-25575366.svm",
+          "file_count": 1937,
+          "generated": "2026-09-30T15:33:07Z",
+          "note": "",
+          "platform": "windows",
+          "sha256": "cb2ddd355f0d42c5ce36141fa4f21b6c70825e09ec60ec48e5e8db5b9a3e6e88",
+          "total_bytes": 74290293403
+        }
+      ],
+      "name": "The Witcher 3: Wild Hunt",
+      "platform": "windows",
+      "replay": "python tools/build_manifest.py --app-id 292030 --slug witcher3 --name \"The Witcher 3: Wild Hunt\" --out manifests",
+      "slug": "witcher3",
+      "store_url": "https://store.steampowered.com/app/292030/",
+      "vendor": "CD Projekt Red"
+    }
+  },
+  "generated": "2026-09-30T15:45:36Z",
+  "version": 1
+}

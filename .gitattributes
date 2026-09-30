@@ -1,0 +1,9 @@
+# Generated manifests are digested and compared by hash, so their bytes must
+# be identical everywhere. Never let Git rewrite them.
+manifests/**/*.svm  binary -text
+
+# Normalise text files so checkouts are byte-identical across platforms.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
