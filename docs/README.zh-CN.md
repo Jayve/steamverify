@@ -19,7 +19,7 @@ Steam 自带的「验证游戏文件完整性」只能告诉你*有问题*，却
 需要 Python 3.9+，无任何第三方依赖。
 
 ```bash
-git clone https://github.com/OWNER/steamverify.git
+git clone https://github.com/Jayve/steamverify.git
 cd steamverify
 pip install -e .
 steamverify --help

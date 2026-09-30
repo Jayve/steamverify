@@ -46,5 +46,5 @@ First release.
   but misleading. They are now their own category and do not affect the
   "game data intact" verdict.
 
-[Unreleased]: https://github.com/OWNER/steamverify/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/steamverify/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Jayve/steamverify/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Jayve/steamverify/releases/tag/v0.1.0

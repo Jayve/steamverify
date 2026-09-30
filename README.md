@@ -63,7 +63,7 @@ no idea about. Nothing else could have surfaced that split.
 Requires Python 3.9+. There are no runtime dependencies.
 
 ```bash
-git clone https://github.com/OWNER/steamverify.git
+git clone https://github.com/Jayve/steamverify.git
 cd steamverify
 pip install -e .
 steamverify --help

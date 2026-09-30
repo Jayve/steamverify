@@ -127,7 +127,7 @@ a particular title belongs in `manifests/`.
 ### Development
 
 ```bash
-git clone https://github.com/OWNER/steamverify.git
+git clone https://github.com/Jayve/steamverify.git
 cd steamverify
 python -m venv .venv && . .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
