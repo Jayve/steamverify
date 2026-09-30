@@ -52,10 +52,20 @@ jobs:
           python -m steamverify info --game witcher3
 
       - name: Smoke-test the CLI (Chinese)
+        # LC_ALL is pinned because macOS runners export their own, and it
+        # outranks LANG; the point here is to exercise --lang, not the locale.
+        env:
+          LC_ALL: C.UTF-8
         run: |
-          python -m steamverify --lang zh list
-          python -m steamverify --lang zh info --game witcher3
+          python -m steamverify --lang zh list | grep -q 内置游戏
+          python -m steamverify --lang zh info --game witcher3 | grep -q 文件数
           python -m steamverify --lang zh doctor
+
+      - name: Language resolution follows the locale
+        env:
+          LC_ALL: C.UTF-8
+          LANG: zh_CN.UTF-8
+        run: python -m steamverify list | grep -q 内置游戏
 
       - name: Help text is localised
         run: |

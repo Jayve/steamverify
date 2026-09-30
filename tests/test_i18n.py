@@ -102,30 +102,70 @@ def test_normalise_language(value, expected):
     assert i18n.normalise_language(value) == expected
 
 
+def _clear_locale(monkeypatch):
+    """Remove every locale variable that would outrank the one under test.
+
+    ``LC_ALL`` outranks ``LANG`` per POSIX, and CI runners set their own values
+    (GitHub's macOS image sets ``LC_ALL``), so a test that only sets ``LANG``
+    would pass or fail depending on the machine.
+    """
+    for name in ("STEAMVERIFY_LANG", "LC_ALL", "LC_MESSAGES", "LANG"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_env_var_selects_language(monkeypatch):
+    _clear_locale(monkeypatch)
     monkeypatch.setenv("STEAMVERIFY_LANG", "zh")
     assert i18n.resolve_language(None) == "zh"
 
 
 def test_explicit_argument_beats_environment(monkeypatch):
+    _clear_locale(monkeypatch)
     monkeypatch.setenv("STEAMVERIFY_LANG", "zh")
     assert i18n.resolve_language("en") == "en"
 
 
 def test_posix_locale_is_honoured(monkeypatch):
-    monkeypatch.delenv("STEAMVERIFY_LANG", raising=False)
+    _clear_locale(monkeypatch)
     monkeypatch.setenv("LANG", "zh_CN.UTF-8")
     assert i18n.resolve_language(None) == "zh"
 
 
+def test_locale_with_language_and_territory(monkeypatch):
+    _clear_locale(monkeypatch)
+    monkeypatch.setenv("LC_ALL", "zh_CN.UTF-8")
+    assert i18n.resolve_language(None) == "zh"
+
+
+def test_lc_all_outranks_lang(monkeypatch):
+    """POSIX precedence: LC_ALL wins, so an en_US LC_ALL means English."""
+    _clear_locale(monkeypatch)
+    monkeypatch.setenv("LC_ALL", "en_US.UTF-8")
+    monkeypatch.setenv("LANG", "zh_CN.UTF-8")
+    assert i18n.resolve_language(None) == "en"
+
+
+def test_lc_messages_outranks_lang(monkeypatch):
+    _clear_locale(monkeypatch)
+    monkeypatch.setenv("LC_MESSAGES", "zh_CN.UTF-8")
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    assert i18n.resolve_language(None) == "zh"
+
+
 def test_c_locale_falls_back_to_english(monkeypatch):
-    monkeypatch.delenv("STEAMVERIFY_LANG", raising=False)
+    _clear_locale(monkeypatch)
     monkeypatch.setenv("LC_ALL", "C")
     monkeypatch.setenv("LANG", "POSIX")
     assert i18n.resolve_language(None) == "en"
 
 
+def test_unset_locale_falls_back_to_english(monkeypatch):
+    _clear_locale(monkeypatch)
+    assert i18n.resolve_language(None) == "en"
+
+
 def test_steamverify_lang_wins_over_locale(monkeypatch):
+    _clear_locale(monkeypatch)
     monkeypatch.setenv("STEAMVERIFY_LANG", "en")
     monkeypatch.setenv("LANG", "zh_CN.UTF-8")
     assert i18n.resolve_language(None) == "en"
