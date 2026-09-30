@@ -44,9 +44,88 @@ def test_extra_grouping(game_tree):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"x" * 10)
     result = scan_tree(root, manifest)
-    groups = {g: (c, b) for g, c, b in result.extra_groups()}
-    assert groups["tools"][0] == 3
-    assert groups["mods"][0] == 1
+    # at the default depth both folders are entirely extra, so each is one row
+    assert result.extra_groups() == [("tools", 3, 30, True), ("mods", 1, 10, True)]
+
+
+def test_extra_groups_depth_reproduces_leading_component_buckets(game_tree):
+    root, manifest = game_tree
+    for name in ("tools/a.exe", "tools/b.exe", "tools/deep/c.exe", "mods/m.bin"):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x" * 10)
+    result = scan_tree(root, manifest)
+    groups = {g: (c, b) for g, c, b, _f in result.extra_groups(depth=2)}
+    assert groups["tools/a.exe"] == (1, 10)
+    assert groups["tools/deep"] == (1, 10)
+    assert groups["tools/b.exe"] == (1, 10)
+    assert groups["mods/m.bin"] == (1, 10)
+
+
+def test_extra_folder_is_reported_as_one_path(game_tree):
+    """A folder nothing official lives in is named once, not expanded."""
+    root, manifest = game_tree
+    for name in ("tools/a.exe", "tools/deep/c.exe", "tools/deep/d.exe"):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x" * 10)
+    result = scan_tree(root, manifest)
+    assert result.extra_folders() == [("tools", 3, 30)]
+    assert result.extra_groups() == [("tools", 3, 30, True)]
+
+
+def test_extra_folder_is_not_collapsed_when_official_files_live_in_it(game_tree):
+    """``sub/`` holds an official file, so only the extra file can be named."""
+    root, manifest = game_tree
+    (root / "sub" / "notes.txt").write_bytes(b"mine")
+    result = scan_tree(root, manifest)
+    assert result.extra_folders() == []
+    assert [(r.path, r.is_folder) for r in result.loose_extra_files()] == [
+        ("sub/notes.txt", False)
+    ]
+    assert result.extra_groups() == [("sub/notes.txt", 1, 4, False)]
+
+
+def test_only_the_outermost_extra_folder_is_reported(game_tree):
+    root, manifest = game_tree
+    for name in ("mods/bundle/a.bin", "mods/bundle/sub/b.bin", "mods/bundle/sub/c.bin"):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"12345")
+    result = scan_tree(root, manifest)
+    assert [folder for folder, _c, _b in result.extra_folders()] == ["mods"]
+    assert result.extra_folders()[0][1] == 3
+
+
+def test_root_level_extra_file_is_named_individually(game_tree):
+    root, manifest = game_tree
+    (root / "trainer.exe").write_bytes(b"tool")
+    result = scan_tree(root, manifest)
+    assert result.extra_folders() == []
+    assert result.extra_groups() == [("trainer.exe", 1, 4, False)]
+
+
+def test_extra_groups_mix_folders_and_loose_files(game_tree):
+    root, manifest = game_tree
+    (root / "tools").mkdir()
+    (root / "tools" / "a.exe").write_bytes(b"x" * 100)
+    (root / "sub").mkdir(exist_ok=True)
+    (root / "sub" / "loose.bin").write_bytes(b"y" * 5000)
+    result = scan_tree(root, manifest)
+    # biggest first, and the folder is flagged as one
+    assert result.extra_groups() == [
+        ("sub/loose.bin", 1, 5000, False),
+        ("tools", 1, 100, True),
+    ]
+
+
+def test_extra_folders_are_posix_relative_paths(game_tree):
+    root, manifest = game_tree
+    path = root / "tools" / "deep" / "x.dat"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"z")
+    result = scan_tree(root, manifest)
+    assert [folder for folder, _c, _b in result.extra_folders()] == ["tools"]
 
 
 def test_modified_plain_file(game_tree):
@@ -191,7 +270,7 @@ def test_extra_groups_sorted_by_size(game_tree):
     (root / "big").mkdir()
     (root / "big" / "a").write_bytes(b"a" * 5000)
     result = scan_tree(root, manifest)
-    assert [g for g, _c, _b in result.extra_groups()] == ["big", "small"]
+    assert [g for g, _c, _b, _f in result.extra_groups()] == ["big", "small"]
 
 
 def test_hash_file_matches_known_digest(tmp_path):

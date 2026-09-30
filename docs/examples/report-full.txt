@@ -25,14 +25,17 @@ Summary
   - ignored       297   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
-  4,960 extra files / 755.12 MiB not in the official build
+  4,960 extra files / 754.88 MiB not in the official build
 
   RESULT: game data intact; only content-free DLC marker files differ.
 
 Extra files by location
-    4,952 files    746.38 MiB   tools
-        7 files      8.74 MiB   _steam_audit
-        1 files           8 B   content
+    4,952 files    746.38 MiB   tools/
+        3 files      7.25 MiB   dlc/bob/
+        2 files      1.00 MiB   mods/mod0001/
+        2 files    256.00 KiB   dlc/dlc10/
+        1 files           8 B   content/notes.txt
+  Paths are relative to the game directory; a trailing / marks a folder in which every file is extra. Hide the ones you keep on purpose with --ignore '<path>/*', or add -v for each file's size and time.
 
 Placeholder entries (not a corruption signal)
   S dlc-tombstones/bob/bob.tombstone

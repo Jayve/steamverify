@@ -23,14 +23,17 @@ steamverify  v0.1.1
   - 已忽略      297   被忽略规则跳过
 
   已按官方版本校验 1,915 个文件 / 69.19 GiB
-  多余文件 4,960 个 / 755.12 MiB，不属于官方版本
+  多余文件 4,960 个 / 754.88 MiB，不属于官方版本
 
   结论：游戏数据完好；仅有无内容的 DLC 标记文件存在差异。
 
 多余文件分布
-    4,952 个文件    746.38 MiB   tools
-        7 个文件      8.74 MiB   _steam_audit
-        1 个文件           8 B   content
+    4,952 个文件    746.38 MiB   tools/
+        3 个文件      7.25 MiB   dlc/bob/
+        2 个文件      1.00 MiB   mods/mod0001/
+        2 个文件    256.00 KiB   dlc/dlc10/
+        1 个文件           8 B   content/notes.txt
+  路径相对于游戏目录；结尾带 / 表示该文件夹内的文件全部都是多余的。想保留的可用 --ignore '<路径>/*' 忽略，加 -v 可查看每个文件的大小与时间。
 
 占位条目（不是损坏信号）
   S dlc-tombstones/bob/bob.tombstone

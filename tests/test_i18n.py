@@ -240,6 +240,16 @@ def test_chinese_report_renders_reasons(tmp_path):
     assert "content differs" in english
 
 
+def test_extra_path_note_is_localised(tmp_path):
+    result = _result(tmp_path)
+    english = reporter.render_text(result, colour="never", language="en")
+    assert "trailing /" in english
+    chinese = reporter.render_text(result, colour="never", language="zh")
+    assert "结尾带 /" in chinese
+    # the path itself is never translated
+    assert "tool.exe" in chinese
+
+
 def test_chinese_report_for_clean_tree(tmp_path):
     text = reporter.render_text(
         _result(tmp_path, extra=False), colour="never", language="zh"

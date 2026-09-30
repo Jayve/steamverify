@@ -43,14 +43,17 @@ Summary
   - ignored       297   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
-  4,960 extra files / 755.12 MiB not in the official build
+  4,960 extra files / 754.88 MiB not in the official build
 
   RESULT: game data intact; only content-free DLC marker files differ.
 
 Extra files by location
-    4,952 files    746.38 MiB   tools
-        7 files      8.74 MiB   _steam_audit
-        1 files           8 B   content
+    4,952 files    746.38 MiB   tools/
+        3 files      7.25 MiB   dlc/bob/
+        2 files      1.00 MiB   mods/mod0001/
+        2 files    256.00 KiB   dlc/dlc10/
+        1 files           8 B   content/notes.txt
+  Paths are relative to the game directory; a trailing / marks a folder in which every file is extra. Hide the ones you keep on purpose with --ignore '<path>/*', or add -v for each file's size and time.
 
 Placeholder entries (not a corruption signal)
   S dlc-tombstones/bob/bob.tombstone
@@ -194,14 +197,17 @@ Summary
   - ignored       297   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
-  4,960 extra files / 755.12 MiB not in the official build
+  4,960 extra files / 754.88 MiB not in the official build
 
   RESULT: game data intact; only content-free DLC marker files differ.
 
 Extra files by location
-    4,952 files    746.38 MiB   tools
-        7 files      8.74 MiB   _steam_audit
-        1 files           8 B   content
+    4,952 files    746.38 MiB   tools/
+        3 files      7.25 MiB   dlc/bob/
+        2 files      1.00 MiB   mods/mod0001/
+        2 files    256.00 KiB   dlc/dlc10/
+        1 files           8 B   content/notes.txt
+  Paths are relative to the game directory; a trailing / marks a folder in which every file is extra. Hide the ones you keep on purpose with --ignore '<path>/*', or add -v for each file's size and time.
 
 Placeholder entries (not a corruption signal)
   S dlc-tombstones/bob/bob.tombstone
@@ -227,7 +233,8 @@ Full output: [`examples/report-full.txt`](docs/examples/report-full.txt) ·
 
 ```bash
 steamverify verify --game witcher3 \
-    --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+    --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \
+    --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \
     --ignore '*.stamp' --ignore 'metadata.store'
 ```
 
@@ -238,7 +245,7 @@ Summary
   # stub           22   content-free placeholder entries (DLC markers)
   . extra           0   files not present in any official manifest
   . missing         0   official files that are absent
-  - ignored     5,257   skipped by ignore rules
+  - ignored     5,259   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
 
@@ -280,6 +287,23 @@ The samples are regenerated from a real install with
 [`tools/generate_examples.py`](tools/generate_examples.py), and CI runs
 [`tools/check_docs.py`](tools/check_docs.py) to prove every block quoted here
 still matches them verbatim.
+
+### How extra paths are reported
+
+A report is only useful if it tells you what to delete, so every extra is named
+by a path relative to the game directory. The only thing that is ever collapsed
+is a folder in which **every** file is extra:
+
+| Shown | Means | Action |
+|---|---|---|
+| `tools/` (trailing slash) | every file under `tools/` is extra, and the official manifest has nothing there | the whole folder can go, or `--ignore 'tools/*'` to keep it |
+| `content/notes.txt` | this one file is extra and sits among official files | delete the file, or `--ignore 'content/notes.txt'` |
+
+A folder is never collapsed when a single official file lives in it, so nothing
+that the manifest tracks can hide behind a directory row. Long paths are printed
+in full rather than truncated -- a path you cannot copy is not actionable.
+`-v` additionally lists every extra file with its size and modification time,
+and `--json` / `--csv` always carry the per-file detail.
 
 ## How it works
 
@@ -372,8 +396,18 @@ result = scanner.scan("/path/to/game", manifest)
 print(result.counts())
 for item in result.modified:
     print(item.path, item.reason("en"))
-for group, count, size in result.extra_groups():
-    print(f"{count:>6} files  {size / 1024**2:>9.1f} MiB  {group}")
+
+# folders whose contents are all extra: (path, files, bytes)
+for folder, count, size in result.extra_folders():
+    print(f"{count:>6} files  {size / 1024**2:>9.1f} MiB  {folder}/")
+
+# ...and the extras that sit among official files, which need naming one by one
+for item in result.loose_extra_files():
+    print(f"{item.size:>12,} B  {item.path}")
+
+# both kinds at once, biggest first: (path, files, bytes, is_folder)
+for path, count, size, is_folder in result.extra_groups():
+    print(f"{count:>6} files  {size / 1024**2:>9.1f} MiB  {path}{'/' if is_folder else ''}")
 ```
 
 The scan engine has no language of its own: it records reasons as i18n keys and

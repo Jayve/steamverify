@@ -1,5 +1,6 @@
 # steamverify verify --game witcher3 \
-#     --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+#     --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \
+#     --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \
 #     --ignore '*.stamp' --ignore 'metadata.store'
 #
 # Official data intact, with the known third-party files and the
@@ -27,7 +28,7 @@ Summary
   # stub           22   content-free placeholder entries (DLC markers)
   . extra           0   files not present in any official manifest
   . missing         0   official files that are absent
-  - ignored     5,257   skipped by ignore rules
+  - ignored     5,259   skipped by ignore rules
 
   1,915 files / 69.19 GiB verified against the official build
 

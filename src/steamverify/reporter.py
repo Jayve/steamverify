@@ -158,8 +158,13 @@ def render_json(result: ScanResult, *, indent: int | None = 2) -> str:
         "errors": result.errors,
         "ignored": result.ignored,
         "extra_groups": [
-            {"group": group, "files": count, "bytes": size}
-            for group, count, size in result.extra_groups()
+            {
+                "group": group,
+                "files": count,
+                "bytes": size,
+                "folder": is_folder,
+            }
+            for group, count, size, is_folder in result.extra_groups()
         ],
     }
     return json.dumps(payload, ensure_ascii=False, indent=indent)
@@ -206,6 +211,21 @@ def write_csv(result: ScanResult, path: str | Path, *, language: str | None = No
 # ---------------------------------------------------------------------------
 # text
 # ---------------------------------------------------------------------------
+def _extra_rows(
+    groups: list[tuple[str, int, int, bool]], max_list: int, *, verbose: bool
+) -> tuple[list[tuple[str, int, int, bool]], int]:
+    """Rows for the "extra files" section and how many were left out.
+
+    Every path is printed: a folder whose contents are *all* extra is one row
+    (``is_folder``), anything else is named file by file.  Only a user who has
+    seen the path can act on it, and ``--ignore``/--csv/--json need it spelled
+    out.  ``--max-list`` stays a display limit rather than a filter, and ``-v``
+    raises it far enough that the collapsed rows are normally all shown.
+    """
+    limit = max(max_list, len(groups)) if verbose else max_list
+    return groups[:limit], len(groups) - min(limit, len(groups))
+
+
 def render_text(
     result: ScanResult,
     *,
@@ -316,16 +336,20 @@ def render_text(
     else:
         emit(c("  " + tr("report.result.extra_only"), "yellow", "bold"))
 
-    # -- extra groups ----------------------------------------------------
+    # -- extra files -----------------------------------------------------
     groups = result.extra_groups()
     if groups:
+        emitted, more = _extra_rows(groups, max_list, verbose=verbose)
         emit()
         emit(c(tr("report.section.extra_groups"), "bold"))
-        for group, count, size in groups[:max_list]:
+        for name, count, size, is_folder in emitted:
             files = tr("report.files_column", count=count)
-            emit(f"  {files}  {format_bytes(size):>12}   {group}")
-        if len(groups) > max_list:
-            emit(c("  " + tr("report.more_hint", count=len(groups) - max_list), "dim"))
+            shown = name + "/" if is_folder else name
+            emit(f"  {files}  {format_bytes(size):>12}   {shown}")
+        if more:
+            emit(c("  " + tr("report.more_hint", count=more), "dim"))
+        elif not verbose:
+            emit(c("  " + tr("report.extra_path_note"), "dim"))
 
     # -- stubs -----------------------------------------------------------
     if result.stubs:
@@ -364,9 +388,12 @@ def render_text(
     if verbose and result.extra:
         emit()
         emit(c(tr("report.section.extras"), "bold"))
-        for item in result.extra:
+        for item in result.extra[:max_list]:
             when = time.strftime("%Y-%m-%d %H:%M", time.localtime(item.mtime)) if item.mtime else ""
             emit(f"  {format_bytes(item.size):>12}  {when:<17} {item.path}")
+        if len(result.extra) > max_list:
+            emit(c("  " + tr("report.more_hint", count=len(result.extra) - max_list),
+                   "dim"))
 
     # -- errors ----------------------------------------------------------
     if result.errors:

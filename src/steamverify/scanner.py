@@ -42,6 +42,8 @@ __all__ = [
     "hash_file",
     "verify_chunked",
     "walk_files",
+    "extra_folders",
+    "group_extras",
 ]
 
 #: Paths that are never meaningful to flag as "extra": this tool's own output,
@@ -98,6 +100,9 @@ class FileResult:
     bad_offsets: tuple[int, ...] = ()
     #: hash was not recomputed (``--no-hash`` fast path)
     size_only: bool = False
+    #: this record stands for a whole folder whose contents are all extra,
+    #: rather than for a single file (see :meth:`ScanResult.extra_groups`)
+    is_folder: bool = False
 
     @property
     def is_ok(self) -> bool:
@@ -143,6 +148,87 @@ class FileResult:
         return data
 
 
+def group_extras(
+    entries: Iterable[tuple[str, int]], depth: int = 1
+) -> dict[str, list[int]]:
+    """Bucket ``(path, bytes)`` entries by their leading path components.
+
+    ``entries`` may be individual files or already-collapsed folders; either
+    way the bucket key is the first ``depth`` components of the path.  Values
+    are ``[files, bytes]`` accumulators, keyed exactly as they appear on disk.
+    """
+    buckets: dict[str, list[int]] = {}
+    for path, size in entries:
+        parts = path.replace("\\", "/").split("/")
+        key = "/".join(parts[:depth]) if depth > 1 else parts[0]
+        slot = buckets.setdefault(key, [0, 0])
+        slot[0] += 1
+        slot[1] += max(size, 0)
+    return buckets
+
+
+def extra_folders(
+    extra: Iterable[FileResult], scanned: Iterable[str]
+) -> list[tuple[str, int, int]]:
+    """Folders whose entire contents are extra: ``(folder, count, bytes)``.
+
+    A path is what a user needs in order to act on a finding, but a mod
+    bundle can hold thousands of files in one directory -- so any folder in
+    which *every* scanned file is extra is reported once, by its path, instead
+    of being expanded.  A folder is only ever collapsed when the manifest has
+    nothing under it at all, so nothing official can hide behind one.
+
+    Only the outermost such folders are returned: ``tools`` is reported rather
+    than ``tools`` plus every subdirectory below it.  The result is sorted by
+    descending byte count, then by path, so the biggest offender leads.
+    """
+    # folder -> files found under it, and how many of those are extras
+    totals: dict[str, int] = {}
+    extras: dict[str, int] = {}
+    sizes: dict[str, int] = {}
+    children: dict[str, set[str]] = {}
+    for path in scanned:
+        parts = path.replace("\\", "/").split("/")[:-1]  # parent folders only
+        for index in range(1, len(parts) + 1):
+            folder = "/".join(parts[:index])
+            totals[folder] = totals.get(folder, 0) + 1
+
+    for item in extra:
+        path = item.path.replace("\\", "/")
+        parts = path.split("/")[:-1]
+        for index in range(1, len(parts) + 1):
+            folder = "/".join(parts[:index])
+            extras[folder] = extras.get(folder, 0) + 1
+            sizes[folder] = sizes.get(folder, 0) + max(item.size, 0)
+            if index < len(parts):
+                children.setdefault(folder, set()).add("/".join(parts[:index + 1]))
+
+    # A candidate's own counts only describe what is directly inside it, so
+    # empty subdirectories are checked against the candidates themselves.
+    complete = {
+        folder
+        for folder, total in totals.items()
+        if extras.get(folder, 0) == total
+    }
+
+    def covered(folder: str) -> bool:
+        return all(child in complete for child in children.get(folder, ()))
+
+    complete = {folder for folder in complete if covered(folder)}
+
+    # Keep only the outermost folders; deeper candidates are implied by them.
+    reported: list[str] = []
+    for folder in sorted(complete, key=lambda name: (name.count("/"), name)):
+        if any(folder.startswith(parent + "/") for parent in reported):
+            continue
+        reported.append(folder)
+
+    return sorted(
+        ((folder, extras[folder], sizes.get(folder, 0)) for folder in reported),
+        key=lambda row: (-row[2], row[0].lower()),
+    )
+
+
 @dataclass
 class ScanResult:
     """Everything a scan produced."""
@@ -159,6 +245,10 @@ class ScanResult:
     started_utc: str = ""
     elapsed_seconds: float = 0.0
     size_only: bool = False
+    #: memoised :meth:`extra_groups` result, filled on first use
+    _extra_groups: list[tuple[str, int, int, bool]] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     # -- aggregates ------------------------------------------------------
     @property
@@ -191,19 +281,72 @@ class ScanResult:
     def unexpected(self) -> list[FileResult]:
         return [r for r in self.extra if not r.reason_key]
 
-    def extra_groups(self, depth: int = 1) -> list[tuple[str, int, int]]:
-        """Group extras by their leading path components: ``(group, count, bytes)``."""
-        buckets: dict[str, list[int]] = {}
+    def scanned_paths(self) -> Iterator[str]:
+        """Every local path the scan classified, including the extras."""
+        for item in self.verified:
+            yield item.path
+        for item in self.modified:
+            yield item.path
+        for item in self.stubs:
+            yield item.path
         for item in self.extra:
-            parts = item.path.replace("\\", "/").split("/")
-            key = "/".join(parts[:depth]) if depth > 1 else parts[0]
-            slot = buckets.setdefault(key, [0, 0])
-            slot[0] += 1
-            slot[1] += max(item.size, 0)
-        return sorted(
-            ((key, value[0], value[1]) for key, value in buckets.items()),
-            key=lambda row: (-row[2], row[0].lower()),
-        )
+            yield item.path
+
+    def extra_folders(self) -> list[tuple[str, int, int]]:
+        """Folders that hold nothing but extra files: ``(folder, count, bytes)``."""
+        return extra_folders(self.extra, self.scanned_paths())
+
+    def loose_extra_files(self) -> list[FileResult]:
+        """Extras that are not inside a folder from :meth:`extra_folders`.
+
+        These need naming individually: they sit next to official files, so no
+        enclosing folder can be pointed at instead.
+        """
+        folders = [folder for folder, _count, _size in self.extra_folders()]
+        loose = [
+            item
+            for item in self.extra
+            if not any(
+                item.path.replace("\\", "/").startswith(folder + "/")
+                for folder in folders
+            )
+        ]
+        return sorted(loose, key=lambda item: (-max(item.size, 0), item.path.lower()))
+
+    def extra_groups(self, depth: int = 1) -> list[tuple[str, int, int, bool]]:
+        """Every extra, keyed by the most specific path that can be acted on.
+
+        Returns ``(path, files, bytes, is_folder)`` rows: one per folder whose
+        contents are entirely extra, plus one per extra file that sits among
+        official files.  ``depth > 1`` keeps the old bucketing behaviour, which
+        groups by the leading components instead (:func:`group_extras`).
+
+        Sorted by descending byte count, then by path.
+        """
+        if depth > 1:
+            buckets = group_extras(
+                ((item.path, item.size) for item in self.extra), depth
+            )
+            return sorted(
+                ((key, value[0], value[1], False) for key, value in buckets.items()),
+                key=lambda row: (-row[2], row[0].lower()),
+            )
+
+        # A scan is read-only once it is returned, so this is computed once:
+        # both the text and the JSON report ask for it.
+        if self._extra_groups is None:
+            rows = [
+                (folder, count, size, True)
+                for folder, count, size in self.extra_folders()
+            ]
+            rows += [
+                (item.path, 1, max(item.size, 0), False)
+                for item in self.loose_extra_files()
+            ]
+            self._extra_groups = sorted(
+                rows, key=lambda row: (-row[2], row[0].lower())
+            )
+        return self._extra_groups
 
     def counts(self) -> dict[str, int]:
         return {

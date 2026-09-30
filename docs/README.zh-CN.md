@@ -126,14 +126,17 @@ steamverify --lang zh verify --game witcher3
   - 已忽略      297   被忽略规则跳过
 
   已按官方版本校验 1,915 个文件 / 69.19 GiB
-  多余文件 4,960 个 / 755.12 MiB，不属于官方版本
+  多余文件 4,960 个 / 754.88 MiB，不属于官方版本
 
   结论：游戏数据完好；仅有无内容的 DLC 标记文件存在差异。
 
 多余文件分布
-    4,952 个文件    746.38 MiB   tools
-        7 个文件      8.74 MiB   _steam_audit
-        1 个文件           8 B   content
+    4,952 个文件    746.38 MiB   tools/
+        3 个文件      7.25 MiB   dlc/bob/
+        2 个文件      1.00 MiB   mods/mod0001/
+        2 个文件    256.00 KiB   dlc/dlc10/
+        1 个文件           8 B   content/notes.txt
+  路径相对于游戏目录；结尾带 / 表示该文件夹内的文件全部都是多余的。想保留的可用 --ignore '<路径>/*' 忽略，加 -v 可查看每个文件的大小与时间。
 
 占位条目（不是损坏信号）
   S dlc-tombstones/bob/bob.tombstone
@@ -160,7 +163,8 @@ steamverify --lang zh verify --game witcher3
 
 ```bash
 steamverify --lang zh verify --game witcher3 \
-    --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+    --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \
+    --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \
     --ignore '*.stamp' --ignore 'metadata.store'
 ```
 
@@ -171,7 +175,7 @@ steamverify --lang zh verify --game witcher3 \
   # 占位         22   无内容的占位条目（DLC 授权标记）
   . 多余          0   不在任何官方清单中的文件
   . 缺失          0   缺失的官方文件
-  - 已忽略    5,257   被忽略规则跳过
+  - 已忽略    5,259   被忽略规则跳过
 
   已按官方版本校验 1,915 个文件 / 69.19 GiB
 
@@ -210,6 +214,20 @@ steamverify --lang zh verify --game witcher3 \
 样例由 [`tools/generate_examples.py`](../tools/generate_examples.py) 从真实安装生成，
 CI 会运行 [`tools/check_docs.py`](../tools/check_docs.py)
 验证本文引用的每一段输出仍然逐行一致。
+
+### 多余文件的呈现方式
+
+报告只有告诉你"删什么"才有用，因此每个多余项都会给出相对游戏目录的具体路径。
+唯一会被折叠的，是**里面每个文件都多余**的文件夹：
+
+| 显示 | 含义 | 处理方式 |
+|---|---|---|
+| `tools/`（结尾带 /） | `tools/` 下所有文件都多余，官方清单在这里没有任何文件 | 整个文件夹可以删除；想保留就用 `--ignore 'tools/*'` |
+| `content/notes.txt` | 只有这一个文件多余，它和官方文件混在一起 | 删除该文件，或用 `--ignore 'content/notes.txt'` |
+
+只要文件夹里还有任何一个官方文件，就不会被折叠成一行，因此清单内的文件不可能
+被目录行掩盖。路径过长时会完整换行显示，不做截断 —— 复制不出来的路径等于没用。
+加 `-v` 会额外列出每个多余文件的大小与修改时间；`--json` / `--csv` 始终包含逐文件明细。
 
 ## 工作原理
 

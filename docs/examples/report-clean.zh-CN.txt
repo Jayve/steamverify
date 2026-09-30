@@ -1,5 +1,6 @@
 # steamverify --lang zh verify --game witcher3 \
-#     --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \
+#     --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \
+#     --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \
 #     --ignore '*.stamp' --ignore 'metadata.store'
 #
 # 官方数据完好，且已知的第三方文件与游戏运行时改写的标记文件均被 --ignore 排除。
@@ -24,7 +25,7 @@ steamverify  v0.1.1
   # 占位         22   无内容的占位条目（DLC 授权标记）
   . 多余          0   不在任何官方清单中的文件
   . 缺失          0   缺失的官方文件
-  - 已忽略    5,257   被忽略规则跳过
+  - 已忽略    5,259   被忽略规则跳过
 
   已按官方版本校验 1,915 个文件 / 69.19 GiB
 

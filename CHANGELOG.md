@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The "extra files" section now names paths instead of top-level buckets.**
+  Every extra is reported as a path relative to the game directory: a folder in
+  which *every* file is extra is one row with a trailing `/` (`tools/`,
+  `dlc/bob/`, `mods/mod0001/`), and an extra that sits among official files is
+  named individually (`content/notes.txt` instead of `content`). A folder is
+  only collapsed when the manifest has nothing under it, so no official file
+  can be hidden behind a directory row.
+- `ScanResult.extra_groups()` returns `(path, files, bytes, is_folder)` rows,
+  ordered by descending byte count. `ScanResult.extra_folders()`, `extra_groups()`
+  and `loose_extra_files()` let library callers pick the granularity they want;
+  `extra_groups(depth=N)` still buckets by the leading `N` path components.
+- JSON `extra_groups[]` entries gained a `folder` boolean and now carry the
+  collapsed path; `modified`, `stub`, `extra` and the CSV keep per-file paths.
+- `--max-list` now counts rows of the new section (a collapsed folder is one
+  row), and `-v` adds size and modification time for each extra file.
+- The report explains the trailing `/` convention and how to feed a printed
+  path back into `--ignore`.
+
 ## [0.1.1] - 2026-10-01
 
 ### Added

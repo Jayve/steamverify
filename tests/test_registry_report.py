@@ -123,6 +123,81 @@ def _scan(tmp_path, specs, mutate=None):
     return scanner.scan(root, manifest)
 
 
+def test_text_report_lists_extra_paths(tmp_path):
+    """Every extra must be named by a path a user can act on."""
+
+    def mutate(root):
+        for name in ("tools/a.exe", "tools/deep/b.exe", "mods/mod.ini"):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"third party")
+        (root / "trainer.exe").write_bytes(b"t")
+
+    result = _scan(tmp_path, [("a.txt", b"aaa")], mutate)
+    text = reporter.render_text(result, colour="never")
+    section = text.split("Extra files by location", 1)[1].split("\n\n", 1)[0]
+    # a folder holding nothing official is named once, with a trailing slash
+    assert "tools/" in section
+    assert "tools/a.exe" not in section
+    # a file outside such a folder is named individually
+    assert "trainer.exe" in section
+    # the explanation is shown when nothing was left out
+    assert "trailing /" in text
+
+
+def test_text_report_keeps_long_paths_whole(tmp_path):
+    """Truncating a path would make it unactionable, so it is never cut."""
+    long_folder = "/".join(f"part{index}" for index in range(12))
+    deep = f"sub/{long_folder}/stray.exe"
+
+    def mutate(root):
+        path = root / deep
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    # an official file shares the deepest folder, so the folder cannot be
+    # collapsed and the extra has to be named by its full path
+    result = _scan(tmp_path, [(f"sub/{long_folder}/nested.bin", b"n")], mutate)
+    assert [row[0] for row in result.extra_groups()] == [deep]
+    assert deep in reporter.render_text(result, colour="never")
+
+
+def test_text_report_shows_every_extra_path_with_verbose(tmp_path):
+    def mutate(root):
+        for index in range(40):
+            path = root / f"tools/file{index:02d}.exe"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"x")
+
+    result = _scan(tmp_path, [("a.txt", b"aaa")], mutate)
+    quiet = reporter.render_text(result, colour="never", max_list=5)
+    verbose = reporter.render_text(result, colour="never", max_list=5, verbose=True)
+    # the folder is one row, so nothing was left out and no hint is printed
+    assert "more" not in quiet
+    assert "tools/" in quiet
+    # -v names every file inside it, up to the display limit
+    assert "tools/file00.exe" in verbose
+    assert "trailing /" not in verbose
+
+
+def test_max_list_shows_fewer_rows_and_says_how_many(tmp_path):
+    def mutate(root):
+        for name in ("mods/mod.ini", "media/movie.bik"):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"third party")
+        (root / "trainer.exe").write_bytes(b"t")
+
+    result = _scan(tmp_path, [("a.txt", b"aaa")], mutate)
+    assert len(result.extra_groups()) == 3
+    section = reporter.render_text(result, colour="never", max_list=1).split(
+        "Extra files by location", 1
+    )[1]
+    assert "2 more" in section
+    # the hint points at the machine-readable output for the full list
+    assert "--json" in section
+
+
 def test_text_report_clean(tmp_path):
     result = _scan(tmp_path, [("a.txt", b"aaa")])
     text = reporter.render_text(result, colour="never")
@@ -177,7 +252,9 @@ def test_json_report_is_valid_and_complete(tmp_path):
     assert payload["summary"]["clean"] is False
     assert payload["modified"][0]["path"] == "a.txt"
     assert payload["extra"][0]["path"] == "extra.bin"
-    assert payload["extra_groups"] == [{"group": "extra.bin", "files": 1, "bytes": 5}]
+    assert payload["extra_groups"] == [
+        {"group": "extra.bin", "files": 1, "bytes": 5, "folder": False}
+    ]
 
 
 def test_csv_output_has_all_rows(tmp_path):

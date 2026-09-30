@@ -95,7 +95,7 @@ CATALOG: dict[str, dict[str, str]] = {
         ),
         "cli.option.follow_symlinks": "descend into symlinked directories",
         "cli.option.max_list": "rows shown per section (default 25)",
-        "cli.option.verbose": "list every extra file",
+        "cli.option.verbose": "also list each extra file with its size and time",
         "cli.option.quiet": "no progress bar",
         "cli.option.color": "colourise output",
         "cli.option.fail_on": "relax the exit code for CI (default: any difference)",
@@ -223,6 +223,12 @@ CATALOG: dict[str, dict[str, str]] = {
         "report.section.next": "What to do",
         "report.more": "... {count} more",
         "report.more_hint": "... {count} more (use --json or --csv for the full list)",
+        "report.extra_path_note": (
+            "Paths are relative to the game directory; a trailing / marks a "
+            "folder in which every file is extra. Hide the ones you keep on "
+            "purpose with --ignore '<path>/*', or add -v for each file's size "
+            "and time."
+        ),
         "report.stub_note": (
             "These official entries carry an identifier hash but are "
             "legitimately empty on disk."
@@ -316,7 +322,7 @@ CATALOG: dict[str, dict[str, str]] = {
         ),
         "cli.option.follow_symlinks": "进入符号链接目录",
         "cli.option.max_list": "每节显示的行数（默认 25）",
-        "cli.option.verbose": "列出全部多余文件",
+        "cli.option.verbose": "同时列出每个多余文件的大小与时间",
         "cli.option.quiet": "不显示进度条",
         "cli.option.color": "彩色输出",
         "cli.option.fail_on": "为 CI 放宽退出码判定（默认：任何差异都算）",
@@ -430,6 +436,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "report.section.next": "处理建议",
         "report.more": "…… 另有 {count} 项",
         "report.more_hint": "…… 另有 {count} 项（用 --json 或 --csv 查看完整列表）",
+        "report.extra_path_note": (
+            "路径相对于游戏目录；结尾带 / 表示该文件夹内的文件全部都是多余的。"
+            "想保留的可用 --ignore '<路径>/*' 忽略，加 -v 可查看每个文件的大小与时间。"
+        ),
         "report.stub_note": "这些官方条目只带标识哈希，本地本就应为空文件。",
         "report.bad_chunks": "首个损坏分块偏移：{offsets}",
         "report.exit_code": "退出码：{code}",

@@ -14,11 +14,22 @@ PY = sys.executable
 
 REAL_ROOT = re.compile(r"[A-Za-z]:\\[^\s\]]*The Witcher 3")
 VERIFY = ["verify", "--game", "witcher3", "--quiet", "--max-list", "5"]
-# Ignore the third-party bundles plus the markers the game rewrites while
-# running (metadata.store.stamp and friends), so the samples stay reproducible
-# no matter whether the game was launched recently.
+# The third-party bundles the samples quote, plus the markers the game rewrites
+# while running (metadata.store.stamp and friends), so the samples stay
+# reproducible no matter whether the game was launched recently.  Keep this in
+# step with the ignore list quoted in docs/examples/report-clean*.txt.
+IGNORE_PATTERNS = (
+    "tools/*",
+    "mods/*",
+    "dlc/bob/*",
+    "dlc/dlc10/*",
+    "content/notes.txt",
+    "*.md",
+    "*.stamp",
+    "metadata.store",
+)
 IGNORES: list[str] = []
-for pattern in ("tools/*", "tools", "_steam_audit/*", "*.md", "*.stamp", "metadata.store"):
+for pattern in IGNORE_PATTERNS:
     IGNORES += ["--ignore", pattern]
 
 
@@ -61,7 +72,8 @@ SAMPLES = {
     ),
     "report-clean.txt": (
         "# steamverify verify --game witcher3 \\\n"
-        "#     --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \\\n"
+        "#     --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \\\n"
+        "#     --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \\\n"
         "#     --ignore '*.stamp' --ignore 'metadata.store'\n#\n"
         "# Official data intact, with the known third-party files and the\n"
         "# markers the game rewrites at runtime ignored.\n#\n" + HEADER_EN,
@@ -69,7 +81,8 @@ SAMPLES = {
     ),
     "report-clean.zh-CN.txt": (
         "# steamverify --lang zh verify --game witcher3 \\\n"
-        "#     --ignore 'tools/*' --ignore '_steam_audit/*' --ignore '*.md' \\\n"
+        "#     --ignore 'tools/*' --ignore 'mods/*' --ignore 'dlc/bob/*' \\\n"
+        "#     --ignore 'dlc/dlc10/*' --ignore 'content/notes.txt' --ignore '*.md' \\\n"
         "#     --ignore '*.stamp' --ignore 'metadata.store'\n#\n"
         "# 官方数据完好，且已知的第三方文件与游戏运行时改写的标记文件均被 --ignore 排除。\n#\n"
         + HEADER_ZH,
