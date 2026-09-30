@@ -2,7 +2,10 @@
 
 **Verify a Steam game installation against a bundled official hash manifest — and list every file that is not part of the official build.**
 
-[English](README.md) · [简体中文](docs/README.zh-CN.md)
+**English** · [简体中文](docs/README.zh-CN.md)
+
+The tool itself speaks both languages — `--lang zh` for Chinese, or let it follow
+your system locale. See [Output language](#output-language).
 
 ---
 
@@ -105,7 +108,41 @@ steamverify doctor
 
 # inspect local Steam libraries
 steamverify steam -v
+
+# Chinese output (also: STEAMVERIFY_LANG=zh, or a zh_* system locale)
+steamverify --lang zh verify --game witcher3
 ```
+
+### Output language
+
+The report is prose, so it is localised; the machine-readable parts are not.
+
+| | English | 简体中文 |
+|---|---|---|
+| Select with | `--lang en` | `--lang zh` |
+| Aliases accepted | `en`, `en-US`, `english` | `zh`, `zh-CN`, `zh-Hans`, `chs`, `cn`, `中文`, `简体中文` |
+| Environment variable | `STEAMVERIFY_LANG=en` | `STEAMVERIFY_LANG=zh` |
+| Auto-detected from | `LC_ALL` / `LC_MESSAGES` / `LANG` | same |
+
+Resolution order: `--lang` → `STEAMVERIFY_LANG` → system locale → English.
+
+What is translated:
+
+* the whole text report, including section headings, the verdict, the reasons
+  attached to each file and the "what to do" advice;
+* progress output and `--help`;
+* `list`, `info`, `doctor`, `steam` and error messages.
+
+What is **never** translated, so scripts and CI stay unaffected by `--lang`:
+
+* JSON keys and values, including `status` (`verified`/`extra`/…) and the
+  `reason` field (a stable key such as `scan.reason.content_differs`, with the
+  English wording alongside it in `reason_text`);
+* CSV column headers and the `status` column;
+* exit codes.
+
+A missing translation falls back to English rather than leaking a raw key, and
+CI asserts the two catalogs have identical key sets and placeholders.
 
 ### Exit codes
 
@@ -187,8 +224,9 @@ python tools/build_from_directory.py --dir "D:/Games/SomeGame" \
     --slug somegame --name "Some Game" --out manifests
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/manifest-format.md](docs/manifest-format.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) ([中文](docs/CONTRIBUTING.zh-CN.md)) and the
+[manifest format spec](docs/manifest-format.md)
+([中文](docs/manifest-format.zh-CN.md)) for details.
 
 ## Bundled games
 
@@ -210,9 +248,20 @@ result = scanner.scan("/path/to/game", manifest)
 
 print(result.counts())
 for item in result.modified:
-    print(item.path, item.reason)
+    print(item.path, item.reason("en"))
 for group, count, size in result.extra_groups():
     print(f"{count:>6} files  {size / 1024**2:>9.1f} MiB  {group}")
+```
+
+The scan engine has no language of its own: it records reasons as i18n keys and
+you render them on demand, so the same result can be printed in either language.
+
+```python
+from steamverify.i18n import get_translator
+
+tr = get_translator("zh")
+print(tr("report.result.clean"))
+print(result.modified[0].reason(tr))
 ```
 
 ## Limitations, honestly

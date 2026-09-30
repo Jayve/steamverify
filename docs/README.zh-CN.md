@@ -2,7 +2,10 @@
 
 **用内置的官方哈希清单校验 Steam 游戏安装，并列出所有不属于官方版本的文件。**
 
-[English](../README.md) · 简体中文
+[English](../README.md) · **简体中文**
+
+工具本身支持中英双语：`--lang zh` 切换中文输出，也可以让它跟随系统区域设置。
+详见[输出语言](#输出语言)。
 
 ---
 
@@ -61,7 +64,38 @@ steamverify doctor
 
 # 查看本机 Steam 库
 steamverify steam -v
+
+# 中文输出（等价于 STEAMVERIFY_LANG=zh，或系统区域设置为 zh_*）
+steamverify --lang zh verify --game witcher3
 ```
+
+### 输出语言
+
+报告是给人看的散文，因此会本地化；机器可读的部分不会。
+
+| | English | 简体中文 |
+|---|---|---|
+| 指定方式 | `--lang en` | `--lang zh` |
+| 接受的别名 | `en`、`en-US`、`english` | `zh`、`zh-CN`、`zh-Hans`、`chs`、`cn`、`中文`、`简体中文` |
+| 环境变量 | `STEAMVERIFY_LANG=en` | `STEAMVERIFY_LANG=zh` |
+| 自动检测来源 | `LC_ALL` / `LC_MESSAGES` / `LANG` | 同上 |
+
+优先级：`--lang` → `STEAMVERIFY_LANG` → 系统区域设置 → 英文。
+
+**会翻译**的内容：
+
+* 整份文本报告，包括各节标题、结论、每个文件的判定原因，以及"处理建议"；
+* 进度输出与 `--help`；
+* `list`、`info`、`doctor`、`steam` 以及全部错误提示。
+
+**永不翻译**（保证脚本与 CI 不受 `--lang` 影响）：
+
+* JSON 的键与值，包括 `status`（`verified`/`extra`/…）与 `reason` 字段
+  （稳定的 key，如 `scan.reason.content_differs`，旁边附英文原文 `reason_text`）；
+* CSV 表头与 `status` 列；
+* 退出码。
+
+缺翻译时回退英文，而不是暴露原始 key；CI 会断言两个语言的 key 集合与 `{}` 占位符完全一致。
 
 ### 退出码
 
@@ -128,6 +162,9 @@ python tools/build_manifest.py \
 python tools/build_from_directory.py --dir "D:/Games/SomeGame" \
     --slug somegame --name "Some Game" --out manifests
 ```
+
+详见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md) 与
+[清单格式规范](manifest-format.zh-CN.md)。
 
 ### 提交清单的要求
 

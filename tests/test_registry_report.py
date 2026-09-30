@@ -14,69 +14,8 @@ from steamverify.manifest import FileEntry
 
 
 # ---------------------------------------------------------------------------
-# fixtures: a manifests/ tree on disk
+# registry
 # ---------------------------------------------------------------------------
-@pytest.fixture
-def manifests_dir(tmp_path):
-    base = tmp_path / "manifests"
-    (base / "gameone").mkdir(parents=True)
-    (base / "gametwo").mkdir(parents=True)
-
-    one_header = manifest_mod.write(
-        base / "gameone" / "gameone-100.svm",
-        {**HEADER, "slug": "gameone", "game": "Game One", "app_id": "100",
-         "build_id": "100"},
-        [plain_entry("a.txt", b"a")],
-    )
-    two_header = manifest_mod.write(
-        base / "gameone" / "gameone-200.svm",
-        {**HEADER, "slug": "gameone", "game": "Game One", "app_id": "100",
-         "build_id": "200"},
-        [plain_entry("a.txt", b"a"), plain_entry("b.txt", b"b")],
-    )
-    other_header = manifest_mod.write(
-        base / "gametwo" / "gametwo-1.svm",
-        {**HEADER, "slug": "gametwo", "game": "Game Two", "app_id": "200",
-         "build_id": "1"},
-        [plain_entry("x.bin", b"x")],
-    )
-    assert (one_header["file_count"], two_header["file_count"],
-            other_header["file_count"]) == (1, 2, 1)
-    loaded_one = manifest_mod.load(base / "gameone" / "gameone-100.svm")
-    loaded_two = manifest_mod.load(base / "gameone" / "gameone-200.svm")
-    loaded_other = manifest_mod.load(base / "gametwo" / "gametwo-1.svm")
-
-    registry = {
-        "version": 1,
-        "generated": "2026-01-01T00:00:00Z",
-        "games": {
-            "gameone": {
-                "slug": "gameone", "name": "Game One", "directory": "gameone",
-                "app_id": "100", "platform": "windows", "current_build": "200",
-                "aliases": ["one", "100"],
-                "default_dirs": {"windows": "GameOneFolder"},
-                "manifests": [
-                    {"file": "gameone-100.svm", "sha256": loaded_one.sha256,
-                     "build_id": "100", "file_count": 1, "total_bytes": 1},
-                    {"file": "gameone-200.svm", "sha256": loaded_two.sha256,
-                     "build_id": "200", "file_count": 2, "total_bytes": 2},
-                ],
-            },
-            "gametwo": {
-                "slug": "gametwo", "name": "Game Two", "directory": "gametwo",
-                "app_id": "200", "platform": "windows", "current_build": "1",
-                "aliases": [],
-                "manifests": [
-                    {"file": "gametwo-1.svm", "sha256": loaded_other.sha256,
-                     "build_id": "1", "file_count": 1, "total_bytes": 1},
-                ],
-            },
-        },
-    }
-    (base / "registry.json").write_text(json.dumps(registry), encoding="utf-8")
-    return base
-
-
 def test_registry_lists_games(manifests_dir):
     reg = registry_mod.Registry.load(manifests_dir / "registry.json")
     assert len(reg) == 2

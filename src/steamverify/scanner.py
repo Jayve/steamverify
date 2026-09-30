@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from .i18n import get_translator
 from .manifest import FileEntry, Manifest, normalise
 
 __all__ = [
@@ -88,7 +89,10 @@ class FileResult:
     mtime: float = 0.0
     sha1: str = ""
     expected_sha1: str = ""
-    reason: str = ""
+    #: i18n key describing the problem (see :mod:`steamverify.i18n`).  The scan
+    #: engine stays language-agnostic; the reporter renders the prose.
+    reason_key: str = ""
+    reason_args: dict = field(default_factory=dict)
     chunks_total: int = 0
     chunks_bad: int = 0
     bad_offsets: tuple[int, ...] = ()
@@ -102,6 +106,12 @@ class FileResult:
     @property
     def size_delta(self) -> int:
         return self.size - self.expected_size
+
+    def reason(self, language: str | None = None) -> str:
+        """Human-readable explanation, localised on demand."""
+        if not self.reason_key:
+            return ""
+        return get_translator(language)(self.reason_key, **self.reason_args)
 
     def as_dict(self) -> dict:
         data = {
@@ -118,8 +128,11 @@ class FileResult:
             data["sha1"] = self.sha1
         if self.expected_sha1 and self.expected_sha1 != self.sha1:
             data["expected_sha1"] = self.expected_sha1
-        if self.reason:
-            data["reason"] = self.reason
+        if self.reason_key:
+            # Machine output keeps the stable English key plus English prose,
+            # so JSON consumers never depend on --lang.
+            data["reason"] = self.reason_key
+            data["reason_text"] = self.reason("en")
         if self.chunks_total:
             data["chunks_total"] = self.chunks_total
             data["chunks_bad"] = self.chunks_bad
@@ -176,7 +189,7 @@ class ScanResult:
 
     @property
     def unexpected(self) -> list[FileResult]:
-        return [r for r in self.extra if not r.reason]
+        return [r for r in self.extra if not r.reason_key]
 
     def extra_groups(self, depth: int = 1) -> list[tuple[str, int, int]]:
         """Group extras by their leading path components: ``(group, count, bytes)``."""
@@ -410,20 +423,21 @@ def scan(
     return result
 
 
-def _stub_reason(entry: FileEntry) -> str:
-    """Explain why a same-size, different-content file is a placeholder.
+def _stub_reason_key() -> str:
+    """i18n key explaining why a same-size, different-content file is a stub.
 
     Some Steam depots ship *content-free* marker files -- DLC ownership
     tombstones are the common case.  The depot manifest records a hash for
-    them, but no Steam client has a file with that content locally; they are
+    them, but no Steam client holds a file with that content locally; they are
     present as zero-byte stubs.  Reporting those as "modified" would be
     technically true and practically misleading, so they get their own
     category and do not move a file into the "changed game data" bucket.
     """
-    return (
-        "placeholder file: the official entry carries an identifier hash, "
-        "but this file is legitimately empty/stubbed on disk"
-    )
+    return "scan.reason.placeholder"
+
+
+def _size_differs(size: int, expected: int) -> dict:
+    return {"size": f"{size:,}", "official": f"{expected:,}"}
 
 
 def _classify(
@@ -433,7 +447,10 @@ def _classify(
     entry: FileEntry | None,
     verify_hashes: bool,
 ):
-    """Return ``(FileResult, matched_entry_or_None)``."""
+    """Return ``(FileResult, matched_entry_or_None)``.
+
+    Reasons are recorded as i18n keys so the engine has no language of its own.
+    """
     size = stat.st_size
     mtime = stat.st_mtime
 
@@ -452,10 +469,8 @@ def _classify(
                     size=size,
                     expected_size=entry.size,
                     mtime=mtime,
-                    reason=(
-                        f"size differs (on disk {size:,} bytes, "
-                        f"official {entry.size:,} bytes)"
-                    ),
+                    reason_key="scan.reason.size_differs",
+                    reason_args=_size_differs(size, entry.size),
                 ),
                 entry,
             )
@@ -482,11 +497,18 @@ def _classify(
                     size=size,
                     expected_size=entry.size,
                     mtime=mtime,
-                    reason=f"unreadable: {exc.strerror or exc}",
+                    reason_key="scan.reason.unreadable",
+                    reason_args={"detail": exc.strerror or str(exc)},
                 ),
                 entry,
             )
         if bad:
+            if bad < entry.chunk_count:
+                reason_key = "scan.reason.chunks_differ"
+                reason_args = {"bad": bad, "total": entry.chunk_count}
+            else:
+                reason_key = "scan.reason.file_differs"
+                reason_args = {}
             return (
                 FileResult(
                     path=relative,
@@ -494,11 +516,8 @@ def _classify(
                     size=size,
                     expected_size=entry.size,
                     mtime=mtime,
-                    reason=(
-                        f"{bad} of {entry.chunk_count} chunks differ"
-                        if bad < entry.chunk_count
-                        else "file content differs"
-                    ),
+                    reason_key=reason_key,
+                    reason_args=reason_args,
                     chunks_total=entry.chunk_count,
                     chunks_bad=bad,
                     bad_offsets=sample,
@@ -527,10 +546,8 @@ def _classify(
                 expected_size=entry.size,
                 mtime=mtime,
                 expected_sha1=entry.sha1,
-                reason=(
-                    f"size differs (on disk {size:,} bytes, "
-                    f"official {entry.size:,} bytes)"
-                ),
+                reason_key="scan.reason.size_differs",
+                reason_args=_size_differs(size, entry.size),
             ),
             entry,
         )
@@ -556,13 +573,14 @@ def _classify(
                 size=size,
                 expected_size=entry.size,
                 mtime=mtime,
-                reason=f"unreadable: {exc.strerror or exc}",
+                reason_key="scan.reason.unreadable",
+                reason_args={"detail": exc.strerror or str(exc)},
             ),
             entry,
         )
     if digest != entry.sha1:
         # A zero-byte file whose official size is also zero is a stub, not a
-        # corrupted asset (see _stub_reason).
+        # corrupted asset (see _stub_reason_key).
         if size == 0 and entry.size == 0:
             return (
                 FileResult(
@@ -573,7 +591,7 @@ def _classify(
                     mtime=mtime,
                     sha1=digest,
                     expected_sha1=entry.sha1,
-                    reason=_stub_reason(entry),
+                    reason_key=_stub_reason_key(),
                 ),
                 entry,
             )
@@ -586,7 +604,7 @@ def _classify(
                 mtime=mtime,
                 sha1=digest,
                 expected_sha1=entry.sha1,
-                reason="content differs",
+                reason_key="scan.reason.content_differs",
             ),
             entry,
         )

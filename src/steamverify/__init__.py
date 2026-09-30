@@ -14,9 +14,17 @@ Library usage::
     from steamverify import registry, scanner
 
     game = registry.Registry.load().get("witcher3")
-    manifest = game.load()
+    manifest = game.load()                       # verifies the manifest digest
     result = scanner.scan("/path/to/game", manifest)
     print(result.counts())
+
+    # localised prose on demand
+    from steamverify.i18n import get_translator
+    for item in result.modified:
+        print(item.path, item.reason(get_translator("zh")))
+
+Output is available in English and Simplified Chinese; see
+:mod:`steamverify.i18n`.
 """
 
 from __future__ import annotations
@@ -30,7 +38,8 @@ __all__ = [
     "scanner",
     "reporter",
     "steam",
+    "i18n",
     "cli",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

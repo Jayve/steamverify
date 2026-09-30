@@ -6,6 +6,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-01
+
+### Added
+
+- **Bilingual output: English and Simplified Chinese.** Select with `--lang`,
+  the `STEAMVERIFY_LANG` variable, or let it follow the system locale
+  (`LC_ALL`/`LC_MESSAGES`/`LANG`), falling back to English. The whole text
+  report, progress output, `--help`, `list`, `info`, `doctor`, `steam` and all
+  error messages are translated.
+- Chinese documentation: [`docs/README.zh-CN.md`](docs/README.zh-CN.md),
+  [`docs/CONTRIBUTING.zh-CN.md`](docs/CONTRIBUTING.zh-CN.md) and
+  [`docs/manifest-format.zh-CN.md`](docs/manifest-format.zh-CN.md).
+
+### Changed
+
+- Scan results now carry an i18n **key** (`scan.reason.*`) plus its arguments
+  instead of a pre-formatted English string, and `FileResult.reason` became a
+  method that renders on demand: `item.reason("zh")`. The scan engine therefore
+  has no language of its own.
+- Report and CLI columns are aligned using terminal display width rather than
+  `len()`, so Chinese labels line up in monospaced terminals.
+- JSON output gained `reason_text` (English prose) next to the stable `reason`
+  key, and `info --json` renamed `source` to `manifest_path` for clarity.
+
+### Notes
+
+- Machine-readable output stays English: JSON keys and values, CSV headers, the
+  `status` column and exit codes are unaffected by `--lang`, so scripts and CI
+  behave identically in both languages.
+- A missing translation falls back to English rather than leaking a raw key, and
+  the test suite asserts both catalogs have identical key sets and `{}`
+  placeholders.
+
 ## [0.1.0] - 2026-09-30
 
 First release.
@@ -46,5 +79,6 @@ First release.
   but misleading. They are now their own category and do not affect the
   "game data intact" verdict.
 
-[Unreleased]: https://github.com/Jayve/steamverify/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Jayve/steamverify/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Jayve/steamverify/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Jayve/steamverify/releases/tag/v0.1.0

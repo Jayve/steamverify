@@ -46,10 +46,47 @@ jobs:
       - name: Validate bundled manifests
         run: python -m steamverify doctor
 
-      - name: Smoke-test the CLI
+      - name: Smoke-test the CLI (English)
         run: |
           python -m steamverify list
           python -m steamverify info --game witcher3
+
+      - name: Smoke-test the CLI (Chinese)
+        run: |
+          python -m steamverify --lang zh list
+          python -m steamverify --lang zh info --game witcher3
+          python -m steamverify --lang zh doctor
+
+      - name: Help text is localised
+        run: |
+          python -m steamverify --help
+          python -m steamverify --lang zh --help
+
+      - name: Machine output ignores --lang
+        shell: bash
+        run: |
+          # Scan an empty directory: the shape of the output is what matters
+          # here, not whether a game is installed on the runner.
+          mkdir -p empty-game
+          python -m steamverify verify --game witcher3 --no-hash --quiet \
+            --json --dir empty-game > en.json || true
+          python -m steamverify --lang zh verify --game witcher3 --no-hash --quiet \
+            --json --dir empty-game > zh.json || true
+          python - <<'PY'
+          import json, sys
+
+          en = json.load(open("en.json", encoding="utf-8"))["summary"]
+          zh = json.load(open("zh.json", encoding="utf-8"))["summary"]
+          for volatile in ("scanned_utc", "elapsed_seconds", "root", "directory"):
+              en.pop(volatile, None)
+              zh.pop(volatile, None)
+          if en != zh:
+              print("JSON differs between languages:")
+              print(" en:", en)
+              print(" zh:", zh)
+              sys.exit(1)
+          print("machine output is language-independent")
+          PY
 
   reproducibility:
     name: manifests are reproducible

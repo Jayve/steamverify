@@ -66,8 +66,10 @@ def test_modified_size_reports_both_sizes(game_tree):
     (root / "plain.txt").write_bytes(b"short")
     result = scan_tree(root, manifest)
     item = result.modified[0]
-    assert "size differs" in item.reason
-    assert str(item.expected_size) in item.reason
+    assert item.reason_key == "scan.reason.size_differs"
+    reason = item.reason("en")
+    assert "size differs" in reason
+    assert str(item.expected_size) in reason
     assert item.size == len(b"short")
 
 
@@ -83,7 +85,8 @@ def test_modified_chunked_file_localises_damage(game_tree):
     assert item.chunks_total == len(manifest.get("archive.pak").chunks)
     assert item.chunks_bad == 1
     assert item.bad_offsets == (64,)
-    assert "1 of" in item.reason
+    assert item.reason_key == "scan.reason.chunks_differ"
+    assert "1 of" in item.reason("en")
 
 
 def test_missing_file_is_detected(game_tree):
@@ -109,7 +112,8 @@ def test_zero_byte_placeholder_is_a_stub_not_modified(tmp_path):
     assert result.game_data_intact
     # ...but it does mean the tree is not a byte-perfect match.
     assert not result.is_clean
-    assert "placeholder" in result.stubs[0].reason
+    assert result.stubs[0].reason_key == "scan.reason.placeholder"
+    assert "placeholder" in result.stubs[0].reason("en")
 
 
 def test_size_only_mode_skips_hashing(game_tree):
